@@ -1,8 +1,19 @@
 "use client";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, memo, useCallback } from "react";
 import { Bell, Activity, Droplets, Thermometer, Waves, Gauge, Settings, ChevronRight } from "lucide-react";
-import { ResponsiveContainer, AreaChart, Area, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
+import dynamic from "next/dynamic";
 import Image from "next/image";
+
+// Dynamic import for recharts to reduce initial bundle size
+const ResponsiveContainer = dynamic(() => import("recharts").then(mod => ({ default: mod.ResponsiveContainer })), { ssr: false });
+const AreaChart = dynamic(() => import("recharts").then(mod => ({ default: mod.AreaChart })), { ssr: false });
+const Area = dynamic(() => import("recharts").then(mod => ({ default: mod.Area })), { ssr: false });
+const LineChart = dynamic(() => import("recharts").then(mod => ({ default: mod.LineChart })), { ssr: false });
+const Line = dynamic(() => import("recharts").then(mod => ({ default: mod.Line })), { ssr: false });
+const XAxis = dynamic(() => import("recharts").then(mod => ({ default: mod.XAxis })), { ssr: false });
+const YAxis = dynamic(() => import("recharts").then(mod => ({ default: mod.YAxis })), { ssr: false });
+const Tooltip = dynamic(() => import("recharts").then(mod => ({ default: mod.Tooltip })), { ssr: false });
+const CartesianGrid = dynamic(() => import("recharts").then(mod => ({ default: mod.CartesianGrid })), { ssr: false });
 
 const LOGO_URL = "/log_or.svg";
 
@@ -150,8 +161,19 @@ function MatrixWaterDetailed({ rows, cols, data, onCellClick }) {
 }
 
 export default function KaylifeApp() {
+  const [currentTime, setCurrentTime] = useState('');
+  const [isClient, setIsClient] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [page, setPage] = useState("dashboard"); // "dashboard" | "agua"
+
+  // Fix hydration mismatch by ensuring time is only rendered on client
+  useEffect(() => {
+    setIsClient(true);
+    const updateTime = () => setCurrentTime(fmtTime(new Date()));
+    updateTime();
+    const interval = setInterval(updateTime, 60000); // Update every minute
+    return () => clearInterval(interval);
+  }, []);
 
   const [series, setSeries] = useState(() => {
     const o = {}; PARAMETERS.forEach((p) => (o[p.key] = makeInitialSeries(p))); return o;
@@ -344,7 +366,7 @@ export default function KaylifeApp() {
             <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 animate-pulse">Live Data</span>
           </div>
           <div className="ml-auto flex items-center gap-3 text-slate-500">
-            <div className="text-xs">Actualizado: {fmtTime(new Date())}</div>
+            <div className="text-xs">Actualizado: {isClient ? currentTime : '--:--'}</div>
             <button className="p-2 rounded-xl hover:bg-slate-100 transition" aria-label="Notificaciones"><Bell className="w-5 h-5"/></button>
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-sky-400 to-indigo-500" />
           </div>
@@ -368,7 +390,7 @@ export default function KaylifeApp() {
         )}
       </div>
 
-      <footer className="text-xs text-slate-500 px-6 py-4">© {new Date().getFullYear()} Kaylife — Demo SPA (Dashboard + Calidad de agua)</footer>
+      <footer className="text-xs text-slate-500 px-6 py-4">© {isClient ? new Date().getFullYear() : '2024'} Kaylife — Demo SPA (Dashboard + Calidad de agua)</footer>
     </div>
   );
 }
